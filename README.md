@@ -77,5 +77,8 @@ commands = [
 | `%server_name%` | Get players server name |  
 | `%chatcontrolred_nick%` | Get the players ChatControlRed nick name |  
 | `%luckperms_meta_{meta}%` | Get luckperms meta value eg `luckperms_meta_home` |
+| `%online%` | Get how many players are online on the velocity server |
+| `%{servername}_online%` | Get how many players online a on a server |
+| `%{servername}_status%` | Get the status of a server eg `online` or `offline` |
 
 The only placeholder support currently is for ChatControl Red nick names. You can use `%chatcontrolred_nick%` for this. Open an issue if you'd like others to be added.
