@@ -1,7 +1,6 @@
 package com.james090500.VelocityGUI.helpers;
 
 import com.velocitypowered.api.proxy.Player;
-import org.mineacademy.velocitycontrol.SyncedCache;
 
 public class ChatControlHelper {
 
@@ -10,8 +9,7 @@ public class ChatControlHelper {
             return null;
         }
 
-        String nickname = SyncedCache.fromName(player.getUsername()).getNick();
-        return nickname != null ? nickname : player.getUsername();
+        return "";
     }
 
     /**

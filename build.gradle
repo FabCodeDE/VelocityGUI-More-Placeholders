@@ -5,10 +5,18 @@ plugins {
     id("io.freefair.lombok") version "8.4"
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
 repositories {
-    mavenLocal()
+    mavenCentral()
+
     maven {
-        url = uri('https://repo.papermc.io/repository/maven-public/')
+        name = "papermc-repo"
+        url = "https://repo.papermc.io/repository/maven-public/"
     }
 
     maven {

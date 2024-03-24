@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.james090500.VelocityGUI.commands.CommandHandler;
 import com.james090500.VelocityGUI.config.Configs;
 import com.james090500.VelocityGUI.helpers.InventoryLauncher;
+import com.james090500.VelocityGUI.helpers.PlaceholderParser;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
@@ -35,6 +36,7 @@ public class VelocityGUI {
         this.server = server;
         this.logger = logger;
         this.dataDirectory = dataDirectory;
+        PlaceholderParser.setProxy(server);
     }
 
     @Subscribe
