@@ -3,6 +3,8 @@ package com.james090500.VelocityGUI.helpers;
 import com.james090500.VelocityGUI.VelocityGUI;
 import com.james090500.VelocityGUI.config.Configs;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.server.RegisteredServer;
+import com.velocitypowered.api.proxy.server.ServerPing;
 import dev.simplix.protocolize.api.inventory.Inventory;
 import dev.simplix.protocolize.api.item.BaseItemStack;
 import dev.simplix.protocolize.api.item.ItemStack;
@@ -13,9 +15,11 @@ import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import net.querz.nbt.tag.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Getter
 public class InventoryBuilder {
@@ -68,6 +72,59 @@ public class InventoryBuilder {
         }
     }
 
+    private static class CachedPingResult {
+        private final boolean online;
+        private final long timestamp;
+
+        public CachedPingResult(boolean online, long timestamp) {
+            this.online = online;
+            this.timestamp = timestamp;
+        }
+
+        public boolean isOnline() {
+            return online;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
+        }
+    }
+    private static final long CACHE_EXPIRY = TimeUnit.SECONDS.toMillis(3); // Cache duration (e.g., 10 seconds)
+    private final HashMap<String, CachedPingResult> pingCache = new HashMap<>();
+
+
+    public ItemStack getServerStatusItem(String serverName, ItemStack defaultItem) {
+        Optional<RegisteredServer> optionalServer = velocityGUI.getServer().getServer(serverName);
+
+        if (optionalServer.isPresent()) {
+            RegisteredServer server = optionalServer.get();
+
+            CachedPingResult cachedPing = pingCache.get(serverName);
+
+            // Check if cache is valid
+            if (cachedPing != null && (System.currentTimeMillis() - cachedPing.getTimestamp()) < CACHE_EXPIRY) {
+                return cachedPing.isOnline() ? defaultItem : new ItemStack(ItemType.REDSTONE_BLOCK);
+            }
+
+            try {
+                CompletableFuture<ServerPing> pingFuture = server.ping();
+                ServerPing serverPing = pingFuture.get(); // Block until the ping is complete
+
+                // Server is online, cache result
+                pingCache.put(serverName, new CachedPingResult(true, System.currentTimeMillis()));
+
+                return defaultItem; // Return the default item stack for online status
+
+            } catch (ExecutionException | InterruptedException e) {
+                // Server is offline or an error occurred, cache result
+                pingCache.put(serverName, new CachedPingResult(false, System.currentTimeMillis()));
+
+                return new ItemStack(ItemType.REDSTONE_BLOCK); // Return redstone block for offline status
+            }
+        }
+
+        return new ItemStack(ItemType.REDSTONE_BLOCK); // Default to redstone block if the server is not found
+    }
     /**
      * Add items to the panel
      * @param guiItems
@@ -80,7 +137,23 @@ public class InventoryBuilder {
                 itemStack = new ItemStack(ItemType.PLAYER_HEAD);
             } else {
                 try {
+
                     itemStack = new ItemStack(ItemType.valueOf(guiItem.getMaterial()));
+
+                    List<String> serverCommands = Arrays.stream(guiItem.getCommands())
+                            .filter(s -> s.contains("server"))
+                            .collect(Collectors.toList());
+
+                    if(!serverCommands.isEmpty()) {
+                        var serverCommand = serverCommands.get(0);  // Get the first command
+                        var serverName = serverCommand.split("= ")[1];
+                        Optional<RegisteredServer> optionalServer = velocityGUI.getServer().getServer(serverName);
+                        if (optionalServer.isPresent()) {
+                            itemStack = getServerStatusItem(serverName, itemStack);
+
+                            // Update your GUI here with the itemStack
+                        }
+                    }
                 } catch (IllegalArgumentException e) {
                     itemStack = new ItemStack(ItemType.STONE);
                     this.velocityGUI.getLogger().error("Invalid Material! " + guiItem.getMaterial());
