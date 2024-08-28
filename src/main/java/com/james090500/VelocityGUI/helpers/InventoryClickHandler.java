@@ -8,6 +8,7 @@ import dev.simplix.protocolize.api.SoundCategory;
 import dev.simplix.protocolize.api.inventory.InventoryClick;
 import dev.simplix.protocolize.api.player.ProtocolizePlayer;
 import dev.simplix.protocolize.data.Sound;
+import net.kyori.adventure.text.Component;
 
 import java.util.Optional;
 
@@ -28,7 +29,7 @@ public class InventoryClickHandler {
      * @param commands
      * @param click
      */
-    public void execute(String[] commands, InventoryClick click) {
+    public void execute(String[] commands, InventoryClick click, String itemName) {
         Player player = velocityGUI.getServer().getPlayer(click.player().uniqueId()).get();
         for(String command : commands) {
             String[] splitCommand = command.split("= ");
@@ -55,6 +56,10 @@ public class InventoryClickHandler {
                                 ProtocolizePlayer protocolizePlayer = Protocolize.playerProvider().player(player.getUniqueId());
                                 protocolizePlayer.playSound(Sound.ITEM_AXE_SCRAPE, SoundCategory.MASTER, 1f, 1f);
                                 click.player().closeInventory();
+                            } else {
+                                //broadcast message to all players on server that the player now plays xyz
+
+                                velocityGUI.getServer().sendMessage(Component.text("§5" + player.getUsername() + "§r now plays §5" + itemName.replace("&", "§") + ""));
                             }
                         });
                     } else {

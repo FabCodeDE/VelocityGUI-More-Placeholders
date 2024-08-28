@@ -53,7 +53,7 @@ public class InventoryLauncher {
             click.cancelled(true);
             Configs.Item item = panel.getItems().get(click.slot());
             if(item != null && item.getCommands() != null) {
-                new InventoryClickHandler(velocityGUI).execute(item.getCommands(), click);
+                new InventoryClickHandler(velocityGUI).execute(item.getCommands(), click, item.getName());
             }
         });
         protocolizePlayer.openInventory(inventory);
