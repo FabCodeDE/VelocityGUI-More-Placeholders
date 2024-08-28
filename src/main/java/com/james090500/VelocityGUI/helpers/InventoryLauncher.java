@@ -48,6 +48,7 @@ public class InventoryLauncher {
         inventoryBuilder.setEmpty(panel.getEmpty());
         inventoryBuilder.setItems(panel.getItems());
         Inventory inventory = inventoryBuilder.build();
+        inventoryBuilder.updateServerItems(panel.getItems(), inventory, protocolizePlayer);
         inventory.onClick(click -> {
             click.cancelled(true);
             Configs.Item item = panel.getItems().get(click.slot());
@@ -55,7 +56,6 @@ public class InventoryLauncher {
                 new InventoryClickHandler(velocityGUI).execute(item.getCommands(), click);
             }
         });
-
         protocolizePlayer.openInventory(inventory);
 
         if(panel.getSound() != null) {

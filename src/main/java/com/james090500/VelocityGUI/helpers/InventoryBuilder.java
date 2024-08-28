@@ -2,12 +2,15 @@ package com.james090500.VelocityGUI.helpers;
 
 import com.james090500.VelocityGUI.VelocityGUI;
 import com.james090500.VelocityGUI.config.Configs;
+import com.velocitypowered.api.network.ProtocolVersion;
 import com.velocitypowered.api.proxy.Player;
+import com.velocitypowered.api.proxy.server.PingOptions;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerPing;
 import dev.simplix.protocolize.api.inventory.Inventory;
 import dev.simplix.protocolize.api.item.BaseItemStack;
 import dev.simplix.protocolize.api.item.ItemStack;
+import dev.simplix.protocolize.api.player.ProtocolizePlayer;
 import dev.simplix.protocolize.data.ItemType;
 import dev.simplix.protocolize.data.inventory.InventoryType;
 import lombok.AccessLevel;
@@ -19,6 +22,7 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Getter
@@ -72,6 +76,68 @@ public class InventoryBuilder {
         }
     }
 
+    public void updateServerItems(HashMap<Integer, Configs.Item> guiItems, Inventory inventory, ProtocolizePlayer protocolizePlayer) {
+        guiItems.forEach((index, guiItem) -> {
+            //Set the item Material, Name and Amount
+            ItemStack itemStack;
+                try {
+
+                    itemStack = new ItemStack(ItemType.valueOf(guiItem.getMaterial()));
+
+                    List<String> serverCommands = Arrays.stream(guiItem.getCommands())
+                            .filter(s -> s.contains("server"))
+                            .collect(Collectors.toList());
+
+                    if(!serverCommands.isEmpty()) {
+                        var serverCommand = serverCommands.get(0);  // Get the first command
+                        var serverName = serverCommand.split("= ")[1];
+                        Optional<RegisteredServer> optionalServer = velocityGUI.getServer().getServer(serverName);
+                        if (optionalServer.isPresent()) {
+                            getServerStatusItem(serverName, itemStack, itemStackUpdated -> {
+                                // Update your GUI with the itemStack here
+                                itemStackUpdated.displayName(PlaceholderParser.of(this.player, guiItem.getName()));
+                                itemStackUpdated.amount(guiItem.getStack());
+                                if(guiItem.getLore() != null) {
+                                    itemStackUpdated.addToLore(PlaceholderParser.of(this.player, (itemStackUpdated.itemType() == ItemType.REDSTONE_BLOCK ? "&cOffline" : "&aOnline")));
+                                    if(itemStackUpdated.itemType() != ItemType.REDSTONE_BLOCK) {
+                                        for (String lore : guiItem.getLore()) {
+                                            itemStackUpdated.addToLore(PlaceholderParser.of(this.player, lore));
+                                        }
+                                    }
+
+                                }
+
+                                //Get the item NBT
+                                CompoundTag tag = itemStackUpdated.nbtData();
+
+                                //Set enchantment on the item if needed
+                                if(guiItem.isEnchanted()) {
+                                    ListTag<CompoundTag> enchantments = new ListTag<>(CompoundTag.class);
+                                    CompoundTag enchantment = new CompoundTag();
+                                    enchantment.put("id", new StringTag("minecraft:unbreaking"));
+                                    enchantment.put("lvl", new ShortTag((short) 1));
+                                    enchantments.add(enchantment);
+                                    tag.put("Enchantments", enchantments);
+                                }
+
+                                tag.put("HideFlags", new IntTag(99));
+                                tag.put("overrideMeta", new ByteTag((byte)1));
+
+                                inventory.item(index, itemStackUpdated);
+                                protocolizePlayer.openInventory(inventory);
+                            });
+
+
+                            // Update your GUI here with the itemStack
+                        }
+                    }
+                } catch (IllegalArgumentException e) {
+                    this.velocityGUI.getLogger().error("Invalid Material! " + guiItem.getMaterial());
+                }
+
+        });
+    }
+
     private static class CachedPingResult {
         private final boolean online;
         private final long timestamp;
@@ -89,11 +155,11 @@ public class InventoryBuilder {
             return timestamp;
         }
     }
-    private static final long CACHE_EXPIRY = TimeUnit.SECONDS.toMillis(3); // Cache duration (e.g., 10 seconds)
+    private static final long CACHE_EXPIRY = TimeUnit.SECONDS.toMillis(10); // Cache duration (e.g., 10 seconds)
     private final HashMap<String, CachedPingResult> pingCache = new HashMap<>();
 
 
-    public ItemStack getServerStatusItem(String serverName, ItemStack defaultItem) {
+    public void getServerStatusItem(String serverName, ItemStack defaultItem, Consumer<ItemStack> callback) {
         Optional<RegisteredServer> optionalServer = velocityGUI.getServer().getServer(serverName);
 
         if (optionalServer.isPresent()) {
@@ -103,27 +169,28 @@ public class InventoryBuilder {
 
             // Check if cache is valid
             if (cachedPing != null && (System.currentTimeMillis() - cachedPing.getTimestamp()) < CACHE_EXPIRY) {
-                return cachedPing.isOnline() ? defaultItem : new ItemStack(ItemType.REDSTONE_BLOCK);
+                callback.accept(cachedPing.isOnline() ? defaultItem : new ItemStack(ItemType.REDSTONE_BLOCK));
+                return;
             }
 
-            try {
-                CompletableFuture<ServerPing> pingFuture = server.ping();
-                ServerPing serverPing = pingFuture.get(); // Block until the ping is complete
-
-                // Server is online, cache result
-                pingCache.put(serverName, new CachedPingResult(true, System.currentTimeMillis()));
-
-                return defaultItem; // Return the default item stack for online status
-
-            } catch (ExecutionException | InterruptedException e) {
-                // Server is offline or an error occurred, cache result
-                pingCache.put(serverName, new CachedPingResult(false, System.currentTimeMillis()));
-
-                return new ItemStack(ItemType.REDSTONE_BLOCK); // Return redstone block for offline status
-            }
+            // Asynchronous ping operation
+            server.ping(PingOptions.builder()
+                            .version(ProtocolVersion.MINECRAFT_1_18_2).timeout(100, TimeUnit.MILLISECONDS)
+                            .build())
+                    .whenComplete((serverPing, throwable) -> {
+                        if (throwable == null) {
+                            // Server is online, cache result
+                            pingCache.put(serverName, new CachedPingResult(true, System.currentTimeMillis()));
+                            callback.accept(defaultItem); // Use the default item for online status
+                        } else {
+                            // Server is offline or an error occurred, cache result
+                            pingCache.put(serverName, new CachedPingResult(false, System.currentTimeMillis()));
+                            callback.accept(new ItemStack(ItemType.REDSTONE_BLOCK)); // Use redstone block for offline status
+                        }
+                    });
+        } else {
+            callback.accept(new ItemStack(ItemType.REDSTONE_BLOCK)); // Default to redstone block if the server is not found
         }
-
-        return new ItemStack(ItemType.REDSTONE_BLOCK); // Default to redstone block if the server is not found
     }
     /**
      * Add items to the panel
@@ -149,7 +216,8 @@ public class InventoryBuilder {
                         var serverName = serverCommand.split("= ")[1];
                         Optional<RegisteredServer> optionalServer = velocityGUI.getServer().getServer(serverName);
                         if (optionalServer.isPresent()) {
-                            itemStack = getServerStatusItem(serverName, itemStack);
+                            itemStack = new ItemStack(ItemType.CONDUIT);
+
 
                             // Update your GUI here with the itemStack
                         }
