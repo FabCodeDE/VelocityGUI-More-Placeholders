@@ -13,7 +13,11 @@ import java.util.HashMap;
 
 public class Configs {
 
-    @Getter private static HashMap<String, Panel> panels = new HashMap<>();
+    private static HashMap<String, Panel> panels = new HashMap<>();
+
+    public static HashMap<String, Panel> getPanels() {
+        return panels;
+    }
 
     /**
      * Loads the config files.
@@ -47,14 +51,46 @@ public class Configs {
 
     public class Panel {
 
-        @Getter private String name;
-        @Getter private String perm;
-        @Getter private int rows ;
-        @Getter private String title;
-        @Getter private String empty;
-        @Getter private String sound;
-        @Getter private String[] commands;
-        @Getter private HashMap<Integer, Item> items;
+        private String name;
+        private String perm;
+        private int rows ;
+        private String title;
+        private String empty;
+        private String sound;
+        private String[] commands;
+        private HashMap<Integer, Item> items;
+
+        public HashMap<Integer, Item> getItems() {
+            return items;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public int getRows() {
+            return rows;
+        }
+
+        public String getPerm() {
+            return perm;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getSound() {
+            return sound;
+        }
+
+        public String getEmpty() {
+            return empty;
+        }
+
+        public String[] getCommands() {
+            return commands;
+        }
 
         @Override
         public String toString() {
@@ -73,11 +109,27 @@ public class Configs {
     public class Item {
 
         private String name;
-        @Getter private String material;
+        private String material;
         private byte stack;
-        @Getter private String[] lore;
-        @Getter private boolean enchanted;
-        @Getter private String[] commands;
+        private String[] lore;
+        private boolean enchanted;
+        private String[] commands;
+
+        public String getMaterial() {
+            return material;
+        }
+
+        public String[] getCommands() {
+            return commands;
+        }
+
+        public String[] getLore() {
+            return lore;
+        }
+
+        public boolean isEnchanted() {
+            return enchanted;
+        }
 
         /**
          * Return name or make empty if missed from config

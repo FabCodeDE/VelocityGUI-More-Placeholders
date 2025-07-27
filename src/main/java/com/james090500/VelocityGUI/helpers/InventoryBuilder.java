@@ -7,6 +7,7 @@ import com.velocitypowered.api.proxy.Player;
 import com.velocitypowered.api.proxy.server.PingOptions;
 import com.velocitypowered.api.proxy.server.RegisteredServer;
 import com.velocitypowered.api.proxy.server.ServerPing;
+import dev.simplix.protocolize.api.chat.ChatElement;
 import dev.simplix.protocolize.api.inventory.Inventory;
 import dev.simplix.protocolize.api.item.BaseItemStack;
 import dev.simplix.protocolize.api.item.ItemStack;
@@ -28,12 +29,32 @@ import java.util.stream.Collectors;
 @Getter
 public class InventoryBuilder {
 
-    @Getter(AccessLevel.NONE) private VelocityGUI velocityGUI;
-    private Player player;
+    private final VelocityGUI velocityGUI;
+    private final Player player;
     private InventoryType rows;
     private Component title;
-    private List<BaseItemStack> emptyItems = new ArrayList<>();
-    private HashMap<Integer, ItemStack> items = new HashMap<>();
+    private final List<BaseItemStack> emptyItems = new ArrayList<>();
+    private final HashMap<Integer, ItemStack> items = new HashMap<>();
+
+    public VelocityGUI getVelocityGUI() {
+        return velocityGUI;
+    }
+
+    public InventoryType getRows() {
+        return rows;
+    }
+
+    public Component getTitle() {
+        return title;
+    }
+
+    public HashMap<Integer, ItemStack> getItems() {
+        return items;
+    }
+
+    public List<BaseItemStack> getEmptyItems() {
+        return emptyItems;
+    }
 
     /**
      * The builder
@@ -67,7 +88,7 @@ public class InventoryBuilder {
      */
     public void setEmpty(String item) {
         ItemStack itemStack = new ItemStack(ItemType.valueOf(item));
-        itemStack.displayName("");
+        itemStack.displayName(ChatElement.ofLegacyText(""));
         itemStack.amount((byte) 1);
 
         int totalSlots = this.getRows().getTypicalSize(player.getProtocolVersion().getProtocol());
@@ -95,13 +116,13 @@ public class InventoryBuilder {
                         if (optionalServer.isPresent()) {
                             getServerStatusItem(serverName, itemStack, itemStackUpdated -> {
                                 // Update your GUI with the itemStack here
-                                itemStackUpdated.displayName(PlaceholderParser.of(this.player, guiItem.getName()));
+                                itemStackUpdated.displayName(ChatElement.of(PlaceholderParser.of(this.player, guiItem.getName())));
                                 itemStackUpdated.amount(guiItem.getStack());
                                 if(guiItem.getLore() != null) {
-                                    itemStackUpdated.addToLore(PlaceholderParser.of(this.player, (itemStackUpdated.itemType() == ItemType.REDSTONE_BLOCK ? "&cOffline" : "&aOnline")));
+                                    itemStackUpdated.addToLore(ChatElement.of(PlaceholderParser.of(this.player, (itemStackUpdated.itemType() == ItemType.REDSTONE_BLOCK ? "&cOffline" : "&aOnline"))));
                                     if(itemStackUpdated.itemType() != ItemType.REDSTONE_BLOCK) {
                                         for (String lore : guiItem.getLore()) {
-                                            itemStackUpdated.addToLore(PlaceholderParser.of(this.player, lore));
+                                            itemStackUpdated.addToLore(ChatElement.of(PlaceholderParser.of(this.player, lore)));
                                         }
                                     }
 
@@ -228,13 +249,13 @@ public class InventoryBuilder {
                 }
             }
 
-            itemStack.displayName(PlaceholderParser.of(this.player, guiItem.getName()));
+            itemStack.displayName(ChatElement.of(PlaceholderParser.of(this.player, guiItem.getName())));
             itemStack.amount(guiItem.getStack());
 
             //Set any lore on the item
             if(guiItem.getLore() != null) {
                 for (String lore : guiItem.getLore()) {
-                    itemStack.addToLore(PlaceholderParser.of(this.player, lore));
+                    itemStack.addToLore(ChatElement.of(PlaceholderParser.of(this.player, lore)));
                 }
             }
 
@@ -318,12 +339,10 @@ public class InventoryBuilder {
      */
     public Inventory build() {
         Inventory inventory = new Inventory(this.getRows());
-        inventory.title(this.getTitle());
+        inventory.title(ChatElement.of(this.getTitle()));
         inventory.items(this.getEmptyItems());
 
-        this.getItems().forEach((index, item) -> {
-            inventory.item(index, item);
-        });
+        this.getItems().forEach(inventory::item);
 
         return inventory;
     }

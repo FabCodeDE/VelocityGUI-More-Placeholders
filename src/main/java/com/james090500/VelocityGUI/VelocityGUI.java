@@ -29,13 +29,25 @@ import org.slf4j.Logger;
 
 import java.nio.file.Path;
 
-@Plugin(id = "velocitygui", name = "VelocityGUI", version = "1.2.5", description = "GUIs for the entire Proxy", authors = { "james095000" })
+@Plugin(id = "velocitygui", name = "VelocityGUI", version = "1.2.7", description = "GUIs for the entire Proxy", authors = { "james095000" })
 public class VelocityGUI {
 
     public final String PREFIX = "&a[VelocityGUI] ";
-    @Getter private final ProxyServer server;
-    @Getter private final Logger logger;
-    @Getter private final Path dataDirectory;
+    private final ProxyServer server;
+    private final Logger logger;
+    private final Path dataDirectory;
+
+    public Logger getLogger() {
+        return logger;
+    }
+
+    public Path getDataDirectory() {
+        return dataDirectory;
+    }
+
+    public ProxyServer getServer() {
+        return server;
+    }
 
     @Inject
     public VelocityGUI(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
